@@ -1,0 +1,417 @@
+; APU.MAC
+;
+; FORTRAN-80 INTERFACE FOR AM9511
+;
+; BECAUSE THE MEMTECH, REDDING AND LUTOWSKI AM9511A FORTRAN SUPPORT
+; LIBRARIES SEEM TO BE LOST I HAVE STARTED THIS IMPLEMENTATION.
+;
+; LINK BEFORE FORLIB.REL
+;
+; THIS CODE IS DESIGNED FOR USE WITH THE 8080 AND THE AM9511A CHIP. WE
+; OPTIMIZE THIS FOR SPEED ON THE 8080.
+;
+         EXTRN    ST9511,DA9511
+         EXTRN    $AC,$ERR
+;
+;
+         CSEG
+         .8080
+;
+;
+; AM9511 DEFINITIONS ===================================================
+;       
+AM.SR    EQU      80H                   ; SERVICE REQUEST
+AM.SINGL EQU      60H                   ; 16 BIT INTEGER
+AM.DOUBL EQU      20H                   ; 32 BIT INTEGER
+AM.FIXED EQU      20H                   ; FIXED POINT
+AM.FLOAT EQU      00H                   ; 32 BIT FLOAT
+;       
+AM.NOP   EQU      00H                   ; NO OPERATION
+AM.SQRT  EQU      01H                   ; SQUARE ROOT
+AM.SIN   EQU      02H                   ; SINE
+AM.COS   EQU      03H                   ; COSINE
+AM.TAN   EQU      04H                   ; TANGENT
+AM.ASIN  EQU      05H                   ; INVERSE SINE
+AM.ACOS  EQU      06H                   ; INVERSE COSINE
+AM.ATAN  EQU      07H                   ; INVERSE TANGENT
+AM.LOG   EQU      08H                   ; COMMON LOG (BASE 10)
+AM.LN    EQU      09H                   ; NATURAL LOG (BASE E)
+AM.EXP   EQU      0AH                   ; EXPONENTIAL (E^X)
+AM.PWR   EQU      0BH                   ; POWER NOS^TOS
+AM.ADD   EQU      0CH                   ; ADD
+AM.SUB   EQU      0DH                   ; SUBTRACT (NOS-TOS)
+AM.MUL   EQU      0EH                   ; MULTIPLY, LOWER HALF
+AM.DIV   EQU      0FH                   ; DIVIDE (NOS/TOS)
+AM.FADD  EQU      10H                   ; FLOATING ADD
+AM.FSUB  EQU      11H                   ; FLOATING SUBTRACT
+AM.FMUL  EQU      12H                   ; FLOATING MULTIPLY
+AM.FDIV  EQU      13H                   ; FLOATING DIVIDE
+AM.CHS   EQU      14H                   ; CHANGE SIGN
+AM.CHSF  EQU      15H                   ; FLOATING CHANGE SIGN
+AM.MUU   EQU      16H                   ; MULTIPLY, UPPER HALF
+AM.PTO   EQU      17H                   ; PUSH TOS TO NOS (COPY)
+AM.POP   EQU      18H                   ; POP
+AM.XCH   EQU      19H                   ; EXCHANGE TOS AND NOS
+AM.PUPI  EQU      1AH                   ; PUSH PI
+AM.FLTD  EQU      1CH                   ; 32 BIT TO FLOAT
+AM.FLTS  EQU      1DH                   ; 16 BIT TO FLOAT
+AM.FIXD  EQU      1EH                   ; FLOAT TO 32 BIT
+AM.FIXS  EQU      1FH                   ; FLOAT TO 16 BIT
+;       
+AM.BUSY  EQU      80H                   ; CHIP IS BUSY
+AM.SIGN  EQU      40H                   ; TOS NEGATIVE
+AM.ZERO  EQU      20H                   ; TOS ZERO
+AM.ERRM  EQU      1EH                   ; MASK FOR ERRORS
+AM.CARRY EQU      01H                   ; CARRY/BORROW
+;
+AM.ENON  EQU      00H                   ; NO ERROR
+AM.EDIV0 EQU      10H                   ; DIVIDE BY ZERO
+AM.ENEG  EQU      08H                   ; SQRT, LOG OF NEGATIVE
+AM.EARG  EQU      18H                   ; ARG OF AIN, COS, E^X TOO LARGE
+AM.EUND  EQU      04H                   ; UNDERFLOW
+AM.EOVF  EQU      02H                   ; OVERFLOW
+;
+;
+; FORTRAN-80 $ERR DEFINITIONS ==========================================
+;
+E.FATAL  EQU      80H                   ; ERROR IS FATAL
+E.DZ     EQU      9                     ; DZ ERROR (DIVIDE BY 0)
+E.OV     EQU      19                    ; OVERFLOW
+E.CN     EQU      20                    ; FLOAT INTEGER CONVERSION
+E.UN     EQU      32                    ; UNDERFLOW
+;
+;
+; WAIT FOR APU =========================================================
+;
+WAIT     MACRO
+         LOCAL    T
+T:       IN       ST9511
+         RLC
+         JC       T
+         ENDM
+;
+;
+; SIGN EXTEND ==========================================================
+;
+SEX      MACRO
+         RAL
+         SBB      A
+         ENDM
+;
+;
+; INTEGER / INTEGER ====================================================
+;
+; DE / HL -> HL
+;
+         PUBLIC   $D9
+;
+$D9:     MOV      A,E
+         OUT      DA9511
+         MOV      A,D
+         OUT      DA9511
+         MOV      A,L
+         OUT      DA9511
+         MOV      A,H
+         OUT      DA9511
+         MVI      A,AM.DIV+AM.SINGL
+         OUT      ST9511
+         WAIT
+         MOV      H,A
+         ANI      AM.ERRM SHL 1
+         JNZ      $D9.3
+         MOV      A,H
+         ANI      AM.ZERO SHL 1
+         JZ       $D9.2
+;
+         XRA      A
+         MOV      H,A
+         MOV      L,A
+         RET
+;
+$D9.2:   IN       DA9511
+         MOV      H,A
+         IN       DA9511
+         MOV      L,A
+         MOV      A,H
+         ORI      1
+         RET
+;
+$D9.3:   CALL     $ERR
+         DB       E.DZ+E.FATAL
+;
+;
+; INTEGER*4 / INTEGER ==================================================
+;
+; $AC / HL -> $AC
+;
+         PUBLIC   $DY
+;
+$DY:     PUSH     H
+         LHLD     $AC
+         MOV      A,L
+         OUT      DA9511
+         MOV      A,H
+         OUT      DA9511
+         LHLD     $AC+2
+         MOV      A,L
+         OUT      DA9511
+         MOV      A,H
+         OUT      DA9511
+;
+         POP      H
+         MOV      A,L
+         OUT      DA9511
+         MOV      A,H
+         OUT      DA9511
+         SEX
+         OUT      DA9511
+         OUT      DA9511
+;
+         MVI      A,AM.DIV+AM.DOUBL
+         OUT      ST9511
+         WAIT
+         MOV      H,A
+         ANI      AM.ERRM SHL 1
+         JNZ      $DY.3
+         MOV      A,H
+         ANI      AM.ZERO SHL 1
+         JZ       $DY.2
+;
+         XRA      A
+         MOV      H,A
+         MOV      L,A
+         SHLD     $AC
+         SHLD     $AC+2
+         RET
+;
+$DY.2:   IN       DA9511
+         MOV      H,A
+         IN       DA9511
+         MOV      L,A
+         SHLD     $AC+2
+         IN       DA9511
+         MOV      H,A
+         IN       DA9511
+         MOV      L,A
+         SHLD     $AC
+         MOV      A,H
+         ORI      1
+         RET
+;
+$DY.3:   CALL     $ERR
+         DB       E.DZ+E.FATAL
+;
+;
+; INTEGER*4 / INTEGER*4  ===============================================
+;
+; $AC / [HL] -> $AC
+;
+         PUBLIC   $D1
+;
+$D1:     PUSH     H
+         LHLD     $AC
+         MOV      A,L
+         OUT      DA9511
+         MOV      A,H
+         OUT      DA9511
+         LHLD     $AC+2
+         MOV      A,L
+         OUT      DA9511
+         MOV      A,H
+         OUT      DA9511
+;
+         POP      H
+         MOV      A,M
+         OUT      DA9511
+         INX      H
+         MOV      A,M
+         OUT      DA9511
+         INX      H
+         MOV      A,M
+         OUT      DA9511
+         INX      H
+         MOV      A,M
+         OUT      DA9511
+;
+         MVI      A,AM.DIV+AM.DOUBL
+         OUT      ST9511
+         WAIT
+         MOV      H,A
+         ANI      AM.ERRM SHL 1
+         JNZ      $D1.3
+         MOV      A,H
+         ANI      AM.ZERO SHL 1
+         JZ       $D1.2
+;
+         XRA      A
+         MOV      H,A
+         MOV      L,A
+         SHLD     $AC
+         SHLD     $AC+2
+         RET
+;
+$D1.2:   IN       DA9511
+         MOV      H,A
+         IN       DA9511
+         MOV      L,A
+         SHLD     $AC+2
+         IN       DA9511
+         MOV      H,A
+         IN       DA9511
+         MOV      L,A
+         SHLD     $AC
+         MOV      A,H
+         ORI      1
+         RET
+;
+$D1.3:   CALL     $ERR
+         DB       E.DZ+E.FATAL
+;
+;
+; INTEGER * INTEGER ====================================================
+;
+; HL * DE -> HL
+;
+         PUBLIC   $M9
+;
+$M9:     MOV      A,L
+         OUT      DA9511
+         MOV      A,H
+         OUT      DA9511
+;
+         MOV      A,E
+         OUT      DA9511
+         MOV      A,D
+         OUT      DA9511
+;
+         MVI      A,AM.MUL+AM.SINGL
+         OUT      ST9511
+         WAIT
+         ANI      AM.ZERO SHL 1
+         JZ       $M9.2
+;
+         XRA      A                     ; Z FLAG
+         MOV      H,A                   ; RESULT 0
+         MOV      L,A
+         RET
+;
+$M9.2:   IN       DA9511
+         MOV      H,A
+         IN       DA9511
+         MOV      L,A
+         MOV      A,H                   ; S FLAG
+         ORI      1
+         RET
+;
+;
+; INTEGER*4 * INTEGER ==================================================
+;
+; $AC * HL -> $AC
+;
+         PUBLIC   $MY
+;
+$MY:     MOV      A,L
+         OUT      DA9511
+         MOV      A,H
+         OUT      DA9511
+         SEX
+         OUT      DA9511
+         OUT      DA9511
+;
+         LHLD     $AC
+         MOV      A,L
+         OUT      DA9511
+         MOV      A,H
+         OUT      DA9511
+         LHLD     $AC+2
+         MOV      A,L
+         OUT      DA9511
+         MOV      A,H
+         OUT      DA9511
+;
+         MVI      A,AM.MUL+AM.DOUBL
+         OUT      ST9511
+         WAIT
+         ANI      AM.ZERO SHL 1
+         JZ       $MY.2
+;
+         XRA      A
+         MOV      H,A
+         MOV      L,A
+         SHLD     $AC
+         SHLD     $AC+2
+         RET
+;
+$MY.2:   IN       DA9511
+         MOV      H,A
+         IN       DA9511
+         MOV      L,A
+         SHLD     $AC+2
+         IN       DA9511
+         MOV      H,A
+         IN       DA9511
+         MOV      L,A
+         SHLD     $AC
+         MOV      A,H
+         ORI      1
+         RET
+;
+;
+; INTEGER*4 * INTEGER*4 ================================================
+;
+; $AC * [HL] -> $AC
+;
+         PUBLIC   $M1
+;
+$M1:     MOV      A,M
+         OUT      DA9511
+         INX      H
+         MOV      A,M
+         OUT      DA9511
+         INX      H
+         MOV      A,M
+         OUT      DA9511
+         INX      H
+         MOV      A,M
+         OUT      DA9511
+;
+         LHLD     $AC
+         MOV      A,L
+         OUT      DA9511
+         MOV      A,H
+         OUT      DA9511
+         LHLD     $AC+2
+         MOV      A,L
+         OUT      DA9511
+         MOV      A,H
+         OUT      DA9511
+;
+         MVI      A,AM.MUL+AM.DOUBL
+         OUT      ST9511
+         WAIT
+         ANI      AM.ZERO SHL 1
+         JZ       $M1.2
+;
+         XRA      A
+         MOV      H,A
+         MOV      L,A
+         SHLD     $AC
+         SHLD     $AC+2
+         RET
+;
+$M1.2:   IN       DA9511
+         MOV      H,A
+         IN       DA9511
+         MOV      L,A
+         SHLD     $AC+2
+         IN       DA9511
+         MOV      H,A
+         IN       DA9511
+         MOV      L,A
+         SHLD     $AC
+         MOV      A,H
+         ORI      1                     ; Z CLEAR, SET SIGN
+         RET
+;
+;
+         END

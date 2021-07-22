@@ -1,0 +1,13 @@
+; AM9511.MAC
+;
+; DEFINE PORTS USED FOR AM9511 APU.
+;
+         .8080
+;
+         PUBLIC   ST9511,DA9511
+;
+ST9511   EQU      43H                   ; STATUS/COMMAND PORT
+DA9511   EQU      42H                   ; DATA PORT
+;
+;
+         END

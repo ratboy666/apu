@@ -1,0 +1,88 @@
+apu.txt
+
+APU is a module for MicroSoft FORTRAN-80. It provides AM9511
+support for INTEGER and INTEGER*4 multiply and divide, and REAL
+arithmetic. DOUBLE PRECISION is not accelerated.
+
+We leave intrinsic functions to another library. The standard
+intrinsic functions should work faster, simply because they
+will use the new arithmetic routines. At a later time, we can
+add some of the intrinsics.
+
+There were three implementations of this "back in the day". In
+1980 or so, we had the Memtech, Redding and Lutowski libraries
+to support the AM9511 APU with MicroSoft FORTRAN-80. None of
+these implementations appear available. APU is designed to fill
+this void.
+
+
+Supported APU Functions:
+
+As APU functions are completed, they will be added to this
+table.
+
+    INTEGER, INTEGER*4
+        $D9 INTEGER   / INTEGER
+        $DY INTEGER*4 / INTEGER
+        $D1 INTEGER*4 / INTEGER*4
+        $M9 INTEGER   * INTEGER
+        $M1 INTEGER*4 * INTEGER*4
+        $MY INTEGER*4 * INTEGER
+    REAL
+        NONE
+    INTRINSIC
+        NONE
+
+TODO
+
+Note that integer add and subtract are (probably) not worth
+implementing. Then, we need to convert MS float to AM9511 qnd back.
+This then makes the REAL arithmetic straight forward.
+
+We want to add in overflow to multiply. Also, if the MS float won't
+fit, raise CN error.
+
+
+Compiling and Linking with APU
+
+APU selectively replaces functions in FORLIB. This is done
+by specifying APU before FORLIB. TEST.FOR is an example.
+
+AM9511.MAC must be edited to reflect the actual ports used
+by the AM9511 device.
+
+-- compile fortran test, generate a listing
+F80 =TEST/L
+
+-- assemble am9511 to define ports
+M80 =AM9511/L
+
+-- assemble apu
+M80 =APU/L
+
+-- link, producing result.com and result.sym
+L80 TEST,AM9511,APU,RESULT/N/Y/E
+
+We will get multiply defined symbols when linking.
+
+For example:
+
+%Mult. Def. Global $DY
+%Mult. Def. Global $D9
+
+These can be ignored. The cause of these is in FORLIB. For example,
+$DY is defined in the INT4 module. There are other needed routines
+in INT4 that we need to link in. This brings in the complete INT4
+module, which then conflicts with APUs definition of $DY. Because
+the APU definition was linked first, it is used (which is what we
+want). Thus the
+
+%Mult. Def. Global $DY
+
+can be taken as a warning. L80 does produce the correct COM file.
+
+Please note that the INT4 version of $DY is actually in  the object
+code output but it is not accessible. Therefore, in general,
+linking with APU provides speed, but does not reduce the COM
+file size.
+
