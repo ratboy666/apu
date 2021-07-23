@@ -9,11 +9,11 @@ intrinsic functions should work faster, simply because they
 will use the new arithmetic routines. At a later time, we can
 add some of the intrinsics.
 
-There were three implementations of this "back in the day". In
-1980 or so, we had the Memtech, Redding and Lutowski libraries
-to support the AM9511 APU with MicroSoft FORTRAN-80. None of
-these implementations appear available. APU is designed to fill
-this void.
+There were three or more implementations of this "back in the day".
+In 1980 or so, we had the Memtech, Redding and Lutowski libraries
+(that I am aware of) to support the AM9511 APU with MicroSoft
+FORTRAN-80. None of these implementations appear available. APU is
+designed to fill this void.
 
 
 Supported APU Functions:
@@ -31,18 +31,25 @@ table.
     REAL
         $SB REAL      - REAL
         $AB REAL      + REAL
-        NONE
+        $MB REAL      * REAL
     INTRINSIC
         NONE
 
 TODO
 
 Note that integer add and subtract are (probably) not worth
-implementing. Then, we need to convert MS float to AM9511 qnd back.
-This then makes the REAL arithmetic straight forward.
+implementing. It takes longer to send a byte to the APU than
+it does to perform an ADD or ADC instruction. Therefore, there
+is no point at which stand-alone integer add or subtract using
+the AM9511 will improve performance. Note that if the data is
+already on-chip, this may change the analysis. However, this
+is not possible with simple library override.
 
-We want to add in overflow to multiply. Also, if the MS float won't
-fit, raise CN error.
+We want to add in overflow detection to multiply.
+
+The integer functions need to be as fast as possible to provide
+any benefit at all. Float functions can be factored a bit for
+size. But, do not abstract too soon!
 
 
 Compiling and Linking with APU
