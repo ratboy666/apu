@@ -1,9 +1,13 @@
 #!/bin/bash
 
+# assemble apu, compile test, and link.
+# two links - test with apu, and test without apu.
+
 m80 =am9511/L
 m80 =apu/L
 f80 =test/L
+
+lib apu=am9511,apu/E
+
 l80 test,noapu/N/Y/E
-l80 test,am9511,apu,apu/N/Y/E
-bascom =btest/l/o
-l80 btest,am9511,apu,btest/N/Y/E
+l80 test,apu,apu/N/Y/E
