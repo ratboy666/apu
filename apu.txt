@@ -34,8 +34,14 @@ table.
         $MB REAL      *  REAL
         $DB REAL      /  REAL
         $EB REAL      ** REAL
+    MIXED
+        $AA REAL      +  INTEGER
+        $SA REAL      -  INTEGER
+        $MA REAL      *  INTEGER
+        $DA REAL      /  INTEGER
     INTRINSIC
         NONE
+
 
 TODO
 

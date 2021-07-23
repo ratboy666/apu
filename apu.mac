@@ -235,6 +235,54 @@ STORR1:  POP      B                     ; ZERO
 ; S=SUB 
 ;
 ;
+; REAL / INTEGER =======================================================
+;
+         PUBLIC   $DA
+;
+$DA:     MVI      A,AM.FDIV
+;;       JMP      ROPI
+;
+;
+; REAL OP INTEGER =====================================================
+;
+ROPI:    PUSH     P
+         XCHG
+         LXI      H,$AC
+         CALL     LOADR
+         MOV      A,E
+         OUT      DA9511
+         MOV      A,D
+         OUT      DA9511
+         MVI      A,AM.FLTS
+         OUT      ST9511
+         WAIT
+         JMP      ROPRX
+;
+;
+; REAL + INTEGER =======================================================
+;
+         PUBLIC   $AA
+;
+$AA:     MVI      A,AM.FADD
+         JMP      ROPI
+;
+;
+; REAL - INTEGER =======================================================
+;
+         PUBLIC   $SA
+;
+$SA:     MVI      A,AM.FSUB
+         JMP      ROPI
+;
+;
+; REAL * INTEGER =======================================================
+;
+         PUBLIC   $MA
+;
+$MA:     MVI      A,AM.FMUL
+         JMP      ROPI
+;
+;
 ; REAL / REAL ==========================================================
 ;
          PUBLIC   $DB
@@ -253,7 +301,7 @@ ROPR:    PUSH     P
          CALL     LOADR
          XCHG
          CALL     LOADR
-         POP      P
+ROPRX:   POP      P
          OUT      ST9511
          WAIT
          LXI      H,$AC
@@ -655,4 +703,4 @@ $M1.2:   IN       DA9511
 ;
 ;
          END
-                                                                                                          
+                                                                                                                         
