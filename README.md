@@ -19,8 +19,8 @@ bascom =btest/l/o
 
 l80 btest,am9511,apu,btest/n/e
 
-Not sure if BRUN (no /O option on the BASCOM compile) will work... The call should resolve
-right into BRUN, which is loaded later.
+BRUN (no /O option on the BASCOM compile) won't work. The calls are all in BRUN.COM!. "Mixed language"
+BASIC-80 with FORTRAN-80 and APU needs /O, and that works fine.
 
 Working on mixed mode, then INTRINSIC.
 
