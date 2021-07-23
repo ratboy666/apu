@@ -29,6 +29,7 @@ table.
         $M1 INTEGER*4 * INTEGER*4
         $MY INTEGER*4 * INTEGER
     REAL
+        $SB REAL      - REAL
         NONE
     INTRINSIC
         NONE
@@ -67,7 +68,10 @@ We will get multiply defined symbols when linking.
 
 For example:
 
+%Mult. Def. Global $D1
 %Mult. Def. Global $DY
+%Mult. Def. Global $M1
+%Mult. Def. Global $MY
 %Mult. Def. Global $D9
 
 These can be ignored. The cause of these is in FORLIB. For example,

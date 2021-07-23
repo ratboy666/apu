@@ -8,7 +8,7 @@
 ; LINK BEFORE FORLIB.REL
 ;
 ; THIS CODE IS DESIGNED FOR USE WITH THE 8080 AND THE AM9511A CHIP. WE
-; OPTIMIZE THIS FOR SPEED ON THE 8080.
+; ATTEMPT TO OPTIMIZE THIS FOR SPEED ON THE 8080.
 ;
          EXTRN    ST9511,DA9511
          EXTRN    $AC,$ERR
@@ -18,7 +18,7 @@
          .8080
 ;
 ;
-; AM9511 DEFINITIONS ===================================================
+; AM9511 DEFINITIONS ==================================================
 ;       
 AM.SR    EQU      80H                   ; SERVICE REQUEST
 AM.SINGL EQU      60H                   ; 16 BIT INTEGER
@@ -72,16 +72,32 @@ AM.EUND  EQU      04H                   ; UNDERFLOW
 AM.EOVF  EQU      02H                   ; OVERFLOW
 ;
 ;
-; FORTRAN-80 $ERR DEFINITIONS ==========================================
+; FORTRAN-80 $ERR DEFINITIONS =========================================
 ;
+; THESE ERRORS ARE IN A TABLE WITHIN FORLIB. CALL $ERR IS FOLLOWED
+; BY A BYTE WITH THE INDEX IN THE TABLE OF THE ERROR (21H IS THE
+; LIMIT, AFTER WHICH ?? IS USED). IF THE HIGH BIT OF THE BYTE IS
+; SET, THE ERROR IS FATAL; OTHERWISE UP TO 20 ERRORS ARE ALLOWED
+; BEFORE TERMINATION.
+;
+; OUR USE OF THESE ERRORS IS: DZ = DIVIDE BY ZERO, OV = OVERFLOW
+; CN = CONVERSION (REAL TO INTEGER, OR REAL TO AM9511).
+; UN = ALL OTHER ERRORS (THINK 'UNKNOWN').
+;
+; UNDERFLOW CONDITIONS GO TO ZERO. OVERFLOW GOES TO THE LARGEST
+; NUMBER THAT CAN BE EXPRESSED BY THE AM9511. NOTE THAT THE BASIC
+; ARITHMETIC FUNCTIONS DO RETURN ADJUSTED EXPONENT AND CORRECT
+; MANTISSA ON THE AM9511, BUT THERE IS NO WAY TO USE THAT WITH
+; 'NORMAL' FORTRAN PROGRAMS, SO WE SIMPLY ZERO OR CLAMP THE RESULT.
+; 
 E.FATAL  EQU      80H                   ; ERROR IS FATAL
 E.DZ     EQU      9                     ; DZ ERROR (DIVIDE BY 0)
 E.OV     EQU      19                    ; OVERFLOW
-E.CN     EQU      20                    ; FLOAT INTEGER CONVERSION
-E.UN     EQU      32                    ; UNDERFLOW
+E.CN     EQU      20                    ; REAL CONVERSION
+E.UN     EQU      32                    ; UN ERROR
 ;
 ;
-; WAIT FOR APU =========================================================
+; WAIT FOR APU ========================================================
 ;
 WAIT     MACRO
          LOCAL    T
@@ -91,7 +107,7 @@ T:       IN       ST9511
          ENDM
 ;
 ;
-; SIGN EXTEND ==========================================================
+; SIGN EXTEND =========================================================
 ;
 SEX      MACRO
          RAL
@@ -99,7 +115,181 @@ SEX      MACRO
          ENDM
 ;
 ;
-; INTEGER / INTEGER ====================================================
+; LOAD REAL ===========================================================
+;
+; LOAD REAL FROM [HL] TO AM9511
+;
+LOADR:   PUSH     B
+         PUSH     H
+         INX      H
+         INX      H
+         MOV      A,M                   ; MANTISAA HIGH BYTE
+         ANI      80H                   ; ISOLATE SIGN
+         MOV      B,A
+         INX      H
+         MOV      A,M                   ; EXPONENT
+         ORA      A
+         JZ       LOADR1
+         CPI      80H+63
+         JNC      LOADR2
+         CPI      80H-64
+         JC       LOADR3
+         SUI      80H
+         ANI      7FH
+         ORA      B                     ; PUSH IN SIGN
+         MOV      B,A
+         POP      H
+         MOV      A,M
+         OUT      DA9511
+         INX      H
+         MOV      A,M
+         OUT      DA9511
+         INX      H
+         MOV      A,M
+         ORI      80H                   ; EXPLICIT NORMALIZATION BIT
+         OUT      DA9511
+         MOV      A,B
+         OUT      DA9511
+         POP      B
+         RET
+LOADR3:  CALL     $ERR                  ; UNDERFLOW (CN)
+         DB       E.CN
+LOADR1:  POP      H
+         XRA      A                     ; LOAD A ZERO
+         OUT      DA9511
+         OUT      DA9511
+         OUT      DA9511
+         OUT      DA9511
+         POP      B
+         RET
+LOADR2:  CALL     $ERR                  ; OVERFLOW (CN)
+         DB       E.CN
+         POP      H
+         MVI      A,0FFH                ; LARGEST NUMBER
+         OUT      DA9511
+         OUT      DA9511
+         OUT      DA9511
+         MVI      A,3FH
+         ORA      B
+         OUT      DA9511
+         POP      B
+         RET
+;
+;
+; STORE REAL ==========================================================
+;
+; STORE REAL FROM AM9511 TO [HL].
+;
+; BECAUSE AN OPERATION THAT SETS THE AM9511 STATUS MAY NOT HAVE BEEN
+; PERFORMED, DETERMINE ZERO BY LOOKING AT BIT 23.
+;
+STORR:   PUSH     B
+         IN       DA9511                ; 9511 EXPONENT
+         MOV      B,A
+         IN       DA9511                ; 9511 HIGH MANTISSA
+         MOV      C,A
+         INX      H                     ; HL=MIDDLE MANTISSA
+         IN       DA9511                ; 9511 MIDDLE MANTISSA
+         MOV      M,A
+         DCX      H                     ; HL=LOW MANTISSA
+         IN       DA9511                ; 9511 LOW MANTISSA
+         MOV      M,A
+         MOV      A,C
+         ANI      80H
+         JZ       STORR1                ; B23=0, ZERO
+         INX      H                     ; HL=MIDDLE MANTISSA
+         INX      H                     ; HL=HIGH MANTISSA
+         MOV      A,C                   ; STRIP EXPLICIT 1
+         ANI      7FH
+         MOV      C,A
+         MOV      A,B                   ; GET SIGN
+         ANI      80H
+         ORA      C                     ; OR IN SIGN
+         MOV      M,A
+         INX      H                     ; HL=EXPONENT
+         MOV      A,B                   ; STRIP SIGN BIT
+         ANI      7FH
+         MOV      B,A
+         ANI      40H                   ; EXPONENT < 0?
+         MOV      A,B
+         JZ       STORR2
+         ORI      0C0H                  ; YES, SIGN EXTEND
+STORR2:  ADI      80H                   ; BIAS BY 128
+         MOV      M,A                   ; AND STORE
+         POP      B
+         RET
+STORR1:  POP      B                     ; ZERO
+         XRA      A
+         MOV      M,A                   ; (HL=LOW MANTISSA)
+         INX      H
+         MOV      M,A
+         INX      H
+         MOV      M,A
+         INX      H
+         MOV      M,A
+         RET
+;
+;
+; NEED TO LOOK AT F80 CODE GENERATION. FLOAT/FLOAT -> $AC ALWAYS?
+; A=ADD AA=REAL/INTEGER AE=REAL/INTEGER*4 AB=REAL/REAL
+; D=DIVIDE
+; E=POWER E9=INTEGER/INTEGER EY=INTEGER*4/INTEGER E1=INTEGER*4/INTEGER*4
+; M=MULT
+; S=SUB 
+;
+; REAL - REAL ==========================================================
+;
+; $AC - [HL] -> $AC
+;
+         PUBLIC   $SB
+;
+$SB:     XCHG
+         LXI      H,$AC
+         CALL     LOADR
+         XCHG
+         CALL     LOADR
+         MVI      A,AM.FSUB
+         OUT      ST9511
+         WAIT
+         LXI      H,$AC
+         CALL     STORR
+         IN       ST9511
+         MOV      L,A
+         ANI      AM.EOVF
+         MOV      A,L
+         JNZ      $SB.3
+         ANI      AM.EUND
+         JNZ      $SB.1
+         MOV      A,L
+         ANI      AM.ZERO
+         JNZ      $SB.2
+         MOV      A,L
+         RAL
+         ANI      80H
+         ORI      1
+         RET
+$SB.1:   CALL     $ERR
+         DB       E.UN
+$SB.2:   XRA      A
+         MOV      H,A
+         MOV      L,A
+         SHLD     $AC
+         SHLD     $AC+2
+         RET
+$SB.3:   LXI      H,0FFFFH
+         SHLD     $AC
+         RAL
+         ANI      80H
+         ORI      7FH
+         MOV      L,A
+         MVI      H,3FH
+         SHLD     $AC
+         CALL     $ERR
+         DB       E.OV
+         RET
+;
+;
+; INTEGER / INTEGER ===================================================
 ;
 ; DE / HL -> HL
 ;
@@ -140,7 +330,7 @@ $D9.3:   CALL     $ERR
          DB       E.DZ+E.FATAL
 ;
 ;
-; INTEGER*4 / INTEGER ==================================================
+; INTEGER*4 / INTEGER =================================================
 ;
 ; $AC / HL -> $AC
 ;
@@ -202,7 +392,7 @@ $DY.3:   CALL     $ERR
          DB       E.DZ+E.FATAL
 ;
 ;
-; INTEGER*4 / INTEGER*4  ===============================================
+; INTEGER*4 / INTEGER*4  ==============================================
 ;
 ; $AC / [HL] -> $AC
 ;
@@ -268,7 +458,7 @@ $D1.3:   CALL     $ERR
          DB       E.DZ+E.FATAL
 ;
 ;
-; INTEGER * INTEGER ====================================================
+; INTEGER * INTEGER ===================================================
 ;
 ; HL * DE -> HL
 ;
@@ -304,7 +494,7 @@ $M9.2:   IN       DA9511
          RET
 ;
 ;
-; INTEGER*4 * INTEGER ==================================================
+; INTEGER*4 * INTEGER =================================================
 ;
 ; $AC * HL -> $AC
 ;
@@ -357,7 +547,7 @@ $MY.2:   IN       DA9511
          RET
 ;
 ;
-; INTEGER*4 * INTEGER*4 ================================================
+; INTEGER*4 * INTEGER*4 ===============================================
 ;
 ; $AC * [HL] -> $AC
 ;
@@ -415,3 +605,5 @@ $M1.2:   IN       DA9511
 ;
 ;
          END
+
+                                                                   
