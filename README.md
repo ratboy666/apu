@@ -1,7 +1,8 @@
 # apu
 
 Link apu.rel before forlib.rel to accelerate INTEGER and INTEGER * 4 (multiply and divide),
-REAL - REAL, REAL + REAL, REAL * REAL, REAL / REAL and REAL ** REAL in your FORTRAN-80 code:
+REAL - REAL, REAL + REAL, REAL * REAL, REAL / REAL, REAL ** REAL, REAL * INTEGER,
+REAL / INTEGER, REAL - INTEGER nd REAL + INTEGER.
 
 f80 =test
 
@@ -27,7 +28,7 @@ l80 btest,apu,btest/n/e
 BRUN (no /O option on the BASCOM compile) won't work. The calls are all in BRUN.COM!. "Mixed language"
 BASIC-80 with FORTRAN-80 and APU needs /O, and that works fine.
 
-Working on mixed mode, then INTRINSIC.
+Working on mixed mode INTEGER * 4, then INTRINSIC library (which will be separate).
 
 
 
