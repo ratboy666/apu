@@ -30,6 +30,7 @@ table.
         $MY INTEGER*4 * INTEGER
     REAL
         $SB REAL      - REAL
+        $AB REAL      + REAL
         NONE
     INTRINSIC
         NONE

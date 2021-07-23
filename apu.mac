@@ -230,7 +230,6 @@ STORR1:  POP      B                     ; ZERO
          RET
 ;
 ;
-; NEED TO LOOK AT F80 CODE GENERATION. FLOAT/FLOAT -> $AC ALWAYS?
 ; A=ADD AA=REAL/INTEGER AE=REAL/INTEGER*4 AB=REAL/REAL
 ; D=DIVIDE
 ; E=POWER E9=INTEGER/INTEGER EY=INTEGER*4/INTEGER E1=INTEGER*4/INTEGER*4
@@ -277,6 +276,56 @@ $SB.2:   XRA      A
          SHLD     $AC+2
          RET
 $SB.3:   LXI      H,0FFFFH
+         SHLD     $AC
+         RAL
+         ANI      80H
+         ORI      7FH
+         MOV      L,A
+         MVI      H,3FH
+         SHLD     $AC
+         CALL     $ERR
+         DB       E.OV
+         RET
+;
+;
+; REAL + REAL ==========================================================
+;
+; $AC + [HL] -> $AC
+;
+         PUBLIC   $AB
+;
+$AB:     CALL     LOADR
+         LXI      H,$AC
+         CALL     LOADR
+         MVI      A,AM.FADD
+         OUT      ST9511
+         WAIT
+         LXI      H,$AC
+         CALL     STORR
+         IN       ST9511
+         MOV      L,A
+         ANI      AM.EOVF
+         MOV      A,L
+         JNZ      $AB.3
+         ANI      AM.EUND
+         JNZ      $AB.1
+         MOV      A,L
+         ANI      AM.ZERO
+         JNZ      $AB.2
+         MOV      A,L
+         RAL
+         ANI      80H
+         ORI      1
+         RET
+$AB.1:   CALL     $ERR
+         DB       E.UN
+$AB.2:   XRA      A
+         MOV      H,A
+         MOV      L,A
+         SHLD     $AC
+         SHLD     $AC+2
+         RET
+$AB.3:   LXI      H,0FFFFH
          SHLD     $AC
          RAL
          ANI      80H
@@ -606,4 +655,4 @@ $M1.2:   IN       DA9511
 ;
          END
 
-                                                                   
+                                                               
