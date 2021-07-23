@@ -9,11 +9,11 @@ intrinsic functions should work faster, simply because they
 will use the new arithmetic routines. At a later time, we can
 add some of the intrinsics.
 
-There were three or more implementations of this "back in the day".
-In 1980 or so, we had the Memtech, Redding and Lutowski libraries
-(that I am aware of) to support the AM9511 APU with MicroSoft
-FORTRAN-80. None of these implementations appear available. APU is
-designed to fill this void.
+There were four or more implementations of this "back in the day".
+In 1980 or so, we had the Memtech, Redding, Lutowski and Video
+Vector Dynamics libraries(that I am aware of) to support the AM9511
+APU with MicroSoft FORTRAN-80. None of these implementations appear
+available. APU is designed to fill this void.
 
 
 Supported APU Functions:
@@ -22,16 +22,18 @@ As APU functions are completed, they will be added to this
 table.
 
     INTEGER, INTEGER*4
-        $D9 INTEGER   / INTEGER
-        $DY INTEGER*4 / INTEGER
-        $D1 INTEGER*4 / INTEGER*4
-        $M9 INTEGER   * INTEGER
-        $M1 INTEGER*4 * INTEGER*4
-        $MY INTEGER*4 * INTEGER
+        $D9 INTEGER   /  INTEGER
+        $DY INTEGER*4 /  INTEGER
+        $D1 INTEGER*4 /  INTEGER*4
+        $M9 INTEGER   *  INTEGER
+        $M1 INTEGER*4 *  INTEGER*4
+        $MY INTEGER*4 *  INTEGER
     REAL
-        $SB REAL      - REAL
-        $AB REAL      + REAL
-        $MB REAL      * REAL
+        $SB REAL      -  REAL
+        $AB REAL      +  REAL
+        $MB REAL      *  REAL
+        $DB REAL      /  REAL
+        $EB REAL      ** REAL
     INTRINSIC
         NONE
 
@@ -45,11 +47,20 @@ the AM9511 will improve performance. Note that if the data is
 already on-chip, this may change the analysis. However, this
 is not possible with simple library override.
 
+The same reasoning is involved with most conversion functions.
+For example $CA is INTEGER to REAL. We could use the AM9511
+FLTS instruction, but need to load the integer to the chip,
+and then convert AM9511 to Microsoft REAL. This will not be
+much faster -- and may even be slower.
+
+However, mixed operations (REAL, INTEGER and REAL INTEGER*4)
+can benefit as the AM9511 can be loaded, FLTS or FLTD, and
+then the operation performed.
+
 We want to add in overflow detection to multiply.
 
 The integer functions need to be as fast as possible to provide
-any benefit at all. Float functions can be factored a bit for
-size. But, do not abstract too soon!
+any benefit at all.
 
 
 Compiling and Linking with APU
@@ -83,17 +94,17 @@ For example:
 %Mult. Def. Global $D9
 
 These can be ignored. The cause of these is in FORLIB. For example,
-$DY is defined in the INT4 module. There are other needed routines
-in INT4 that we need to link in. This brings in the complete INT4
-module, which then conflicts with APUs definition of $DY. Because
-the APU definition was linked first, it is used (which is what we
-want). Thus the
+$DY is defined in the INT4 module. There are other routines in INT4
+that we need to link in. This brings in the complete INT4 module,
+which then conflicts with APUs definition of $DY. Because the APU
+definition was linked first, it is used (which is what we want).
+Thus the
 
 %Mult. Def. Global $DY
 
 can be taken as a warning. L80 does produce the correct COM file.
 
-Please note that the INT4 version of $DY is actually in  the object
+Please note that the INT4 version of $DY is actually in the object
 code output but it is not accessible. Therefore, in general,
 linking with APU provides speed, but does not reduce the COM
 file size.

@@ -2,9 +2,6 @@
 ;
 ; FORTRAN-80 INTERFACE FOR AM9511
 ;
-; BECAUSE THE MEMTECH, REDDING AND LUTOWSKI AM9511A FORTRAN SUPPORT
-; LIBRARIES SEEM TO BE LOST I HAVE STARTED THIS IMPLEMENTATION.
-;
 ; LINK BEFORE FORLIB.REL
 ;
 ; THIS CODE IS DESIGNED FOR USE WITH THE 8080 AND THE AM9511A CHIP. WE
@@ -67,7 +64,7 @@ AM.CARRY EQU      01H                   ; CARRY/BORROW
 AM.ENON  EQU      00H                   ; NO ERROR
 AM.EDIV0 EQU      10H                   ; DIVIDE BY ZERO
 AM.ENEG  EQU      08H                   ; SQRT, LOG OF NEGATIVE
-AM.EARG  EQU      18H                   ; ARG OF AIN, COS, E^X TOO LARGE
+AM.EARG  EQU      18H                   ; ARG ASIN, COS, E^X TOO LARGE
 AM.EUND  EQU      04H                   ; UNDERFLOW
 AM.EOVF  EQU      02H                   ; OVERFLOW
 ;
@@ -82,7 +79,8 @@ AM.EOVF  EQU      02H                   ; OVERFLOW
 ;
 ; OUR USE OF THESE ERRORS IS: DZ = DIVIDE BY ZERO, OV = OVERFLOW
 ; CN = CONVERSION (REAL TO INTEGER, OR REAL TO AM9511).
-; UN = ALL OTHER ERRORS (THINK 'UNKNOWN').
+; UN = ALL OTHER ERRORS (THINK 'UNKNOWN', MOSTLY UNDERFLOW, IF
+; ENABLED).
 ;
 ; UNDERFLOW CONDITIONS GO TO ZERO. OVERFLOW GOES TO THE LARGEST
 ; NUMBER THAT CAN BE EXPRESSED BY THE AM9511. NOTE THAT THE BASIC
@@ -236,46 +234,57 @@ STORR1:  POP      B                     ; ZERO
 ; M=MULT
 ; S=SUB 
 ;
-; REAL - REAL ==========================================================
 ;
-; $AC - [HL] -> $AC
+; REAL / REAL ==========================================================
 ;
-         PUBLIC   $SB
+         PUBLIC   $DB
 ;
-$SB:     XCHG
+$DB:     MVI      A,AM.FSUB
+;;       JMP      ROPR
+;
+;
+; REAL OP REAL =========================================================
+;
+; $AC OP [HL] -> $AC
+;
+ROPR:    PUSH     P
+         XCHG
          LXI      H,$AC
          CALL     LOADR
          XCHG
          CALL     LOADR
-         MVI      A,AM.FSUB
+         POP      P
          OUT      ST9511
          WAIT
          LXI      H,$AC
          CALL     STORR
          IN       ST9511
          MOV      L,A
+         ANI      AM.DIV0
+         JNZ      ROPR4
+         MOV      L,A
          ANI      AM.EOVF
          MOV      A,L
-         JNZ      $SB.3
+         JNZ      ROPR3
          ANI      AM.EUND
-         JNZ      $SB.1
+         JNZ      ROPR1
          MOV      A,L
          ANI      AM.ZERO
-         JNZ      $SB.2
+         JNZ      ROPR2
          MOV      A,L
          RAL
          ANI      80H
          ORI      1
          RET
-$SB.1:   CALL     $ERR
-         DB       E.UN
-$SB.2:   XRA      A
+ROPR1:   ;;CALL     $ERR
+         ;;DB       E.UN
+ROPR2:   XRA      A
          MOV      H,A
          MOV      L,A
          SHLD     $AC
          SHLD     $AC+2
          RET
-$SB.3:   LXI      H,0FFFFH
+ROPR3:   LXI      H,0FFFFH
          SHLD     $AC
          RAL
          ANI      80H
@@ -286,6 +295,18 @@ $SB.3:   LXI      H,0FFFFH
          CALL     $ERR
          DB       E.OV
          RET
+ROPR4:   CALL     $ERR
+         DB       E.DZ+E.FATAL
+;
+;
+; REAL - REAL ==========================================================
+;
+; $AC - [HL] -> $AC
+;
+         PUBLIC   $SB
+;
+$SB:     MVI      A,AM.FSUB
+         JMP      ROPR
 ;
 ;
 ; REAL + REAL ==========================================================
@@ -294,48 +315,8 @@ $SB.3:   LXI      H,0FFFFH
 ;
          PUBLIC   $AB
 ;
-$AB:     CALL     LOADR
-         LXI      H,$AC
-         CALL     LOADR
-         MVI      A,AM.FADD
-         OUT      ST9511
-         WAIT
-         LXI      H,$AC
-         CALL     STORR
-         IN       ST9511
-         MOV      L,A
-         ANI      AM.EOVF
-         MOV      A,L
-         JNZ      $AB.3
-         ANI      AM.EUND
-         JNZ      $AB.1
-         MOV      A,L
-         ANI      AM.ZERO
-         JNZ      $AB.2
-         MOV      A,L
-         RAL
-         ANI      80H
-         ORI      1
-         RET
-$AB.1:   CALL     $ERR
-         DB       E.UN
-$AB.2:   XRA      A
-         MOV      H,A
-         MOV      L,A
-         SHLD     $AC
-         SHLD     $AC+2
-         RET
-$AB.3:   LXI      H,0FFFFH
-         SHLD     $AC
-         RAL
-         ANI      80H
-         ORI      7FH
-         MOV      L,A
-         MVI      H,3FH
-         SHLD     $AC
-         CALL     $ERR
-         DB       E.OV
-         RET
+$AB:     MVI      A,AM.FADD
+         JMP      ROPR
 ;
 ;
 ; REAL * REAL ==========================================================
@@ -344,48 +325,18 @@ $AB.3:   LXI      H,0FFFFH
 ;
          PUBLIC   $MB
 ;
-$MB:     CALL     LOADR
-         LXI      H,$AC
-         CALL     LOADR
-         MVI      A,AM.FADD
-         OUT      ST9511
-         WAIT
-         LXI      H,$AC
-         CALL     STORR
-         IN       ST9511
-         MOV      L,A
-         ANI      AM.EOVF
-         MOV      A,L
-         JNZ      $MB.3
-         ANI      AM.EUND
-         JNZ      $MB.1
-         MOV      A,L
-         ANI      AM.ZERO
-         JNZ      $MB.2
-         MOV      A,L
-         RAL
-         ANI      80H
-         ORI      1
-         RET
-$MB.1:   CALL     $ERR
-         DB       E.UN
-$MB.2:   XRA      A
-         MOV      H,A
-         MOV      L,A
-         SHLD     $AC
-         SHLD     $AC+2
-         RET
-$MB.3:   LXI      H,0FFFFH
-         SHLD     $AC
-         RAL
-         ANI      80H
-         ORI      7FH
-         MOV      L,A
-         MVI      H,3FH
-         SHLD     $AC
-         CALL     $ERR
-         DB       E.OV
-         RET
+$MB:     MVI      A,AM.FMUL
+         JMP      ROPR
+;
+;
+; REAL ** REAL ========================================================
+;
+; $AC ** [HL] -> $AC
+;
+         PUBLIC   $EB
+;
+$EB:     MVI      A,AM.PWR
+         JMP      ROPR
 ;
 ;
 ; INTEGER / INTEGER ===================================================
@@ -705,4 +656,4 @@ $M1.2:   IN       DA9511
 ;
          END
 
-                                                                                                                        
+                                                                                                         
