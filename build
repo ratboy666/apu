@@ -1,0 +1,9 @@
+#!/bin/bash
+
+m80 =am9511/L
+m80 =apu/L
+f80 =test/L
+l80 test,noapu/N/Y/E
+l80 test,am9511,apu,apu/N/Y/E
+bascom =btest/l/o
+l80 btest,am9511,apu,btest/N/Y/E

@@ -239,7 +239,7 @@ STORR1:  POP      B                     ; ZERO
 ;
          PUBLIC   $DB
 ;
-$DB:     MVI      A,AM.FSUB
+$DB:     MVI      A,AM.FDIV
 ;;       JMP      ROPR
 ;
 ;
