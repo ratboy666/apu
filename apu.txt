@@ -4,10 +4,7 @@ APU is a module for MicroSoft FORTRAN-80. It provides AM9511
 support for INTEGER and INTEGER*4 multiply and divide, and REAL
 arithmetic. DOUBLE PRECISION is not accelerated.
 
-We leave intrinsic functions to another library. The standard
-intrinsic functions should work faster, simply because they
-will use the new arithmetic routines. At a later time, we can
-add some of the intrinsics.
+Some intrinsics are accelerated.
 
 There were four or more implementations of this "back in the day".
 In 1980 or so, we had the Memtech, Redding, Lutowski and Video
