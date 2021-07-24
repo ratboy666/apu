@@ -6,6 +6,7 @@ REAL / INTEGER, REAL - INTEGER and REAL + INTEGER. REAL op INTEGER * 4 and intri
 functions are accelerated.
 
 APU is now functionally complete. It may have bugs... test.for is not yet complete
+Using APU adds around 900 bytes to your application.
 
 f80 =test
 
