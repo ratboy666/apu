@@ -11,3 +11,8 @@ lib apu=am9511,apu/E
 
 l80 test,noapu/N/Y/E
 l80 test,apu,apu/N/Y/E
+
+# bascom test
+
+bascom =btest/O/L
+l80 btest,apu,btest/N/Y/E
