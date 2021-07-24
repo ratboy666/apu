@@ -228,12 +228,51 @@ STORR1:  POP      B                     ; ZERO
          RET
 ;
 ;
-; A=ADD AA=REAL/INTEGER AE=REAL/INTEGER*4 AB=REAL/REAL
-; D=DIVIDE
-; E=POWER E9=INTEGER/INTEGER EY=INTEGER*4/INTEGER E1=INTEGER*4/INTEGER*4
-; M=MULT
-; S=SUB 
+; REAL / INTEGER*4 =====================================================
 ;
+$DE:     MVI      A,AM.FDIV
+;;       JMP      ROPL
+;
+;
+; REAL OP INTEGER*4 ====================================================
+;
+ROPL:    PUSH     P
+         XCHG
+         LXI      H,$AC
+         CALL     LOADR
+         LDAX     D
+         OUT      DA9511
+         INX      D
+         LDAX     D
+         OUT      DA9511
+         INX      D
+         LDAX     D
+         OUT      DA9511
+         INX      D
+         LDAX     D
+         OUT      DA9511
+         MVI      A,AM.FLTD
+         OUT      ST9511
+         WAIT
+         JMP      ROPRX
+;
+;
+; REAL + INTEGER*4 =====================================================
+;
+$AE:     MVI      A,AM.FADD
+         JMP      ROPL
+;
+;
+; REAL - INTEGER*4 =====================================================
+;
+$SE:     MVI      A,AM.FSUB
+         JMP      ROPL
+;
+;
+; REAL * INTEGER*4 =====================================================
+;
+$ME:     MVI      A,AM.FMUL
+         JMP      ROPL
 ;
 ; REAL / INTEGER =======================================================
 ;
@@ -320,6 +359,9 @@ ROPRX:   POP      P
          ANI      AM.ZERO
          JNZ      ROPR2
          MOV      A,L
+         ANI      AM.ERRM
+         JNZ      ROPR5
+         MOV      A,L
          RAL
          ANI      80H
          ORI      1
@@ -345,6 +387,8 @@ ROPR3:   LXI      H,0FFFFH
          RET
 ROPR4:   CALL     $ERR
          DB       E.DZ+E.FATAL
+ROPR5:   CALL     $ERR
+         DB       E.UN+E.FATAL
 ;
 ;
 ; REAL - REAL ==========================================================
@@ -702,5 +746,70 @@ $M1.2:   IN       DA9511
          RET
 ;
 ;
+; EXP =================================================================
+;
+         PUBLIC   EXP
+;
+EXP:     MVI      A,AM.EXP
+;;       JMP      FUNC
+;
+;
+; FUNC(X) =============================================================
+;
+; FUNC([HL]) -> $AC
+;
+FUNC:    PUSH     P
+         CALL     LOADR
+         JMP      ROPRX
+;
+;
+; ALOG ================================================================
+;
+         PUBLIC   ALOG
+;
+ALOG:    MVI      A,AM.LN
+         JMP      FUNC
+;
+;
+; ALOG10 ==============================================================
+;
+         PUBLIC   ALOG10
+;
+ALOG10:  MVI      A,AM.LOG
+         JMP      FUNC
+;
+;
+; SIN =================================================================
+;
+         PUBLIC   SIN
+;
+SIN:     MVI      A,AM.SIN
+         JMP      FUNC
+;
+;
+; COS =================================================================
+;
+         PUBLIC   COS
+;
+COS:     MVI      A,AM.COS
+         JMP      FUNC
+;
+;
+; SQRT ================================================================
+;
+         PUBLIC   SQRT
+;
+SQRT:    MVI      A,AM.SQRT
+         JMP      FUNC
+;
+;
+; ATAN ================================================================
+;
+         PUBLIC   ATAN
+;
+ATAN:    MVI      A,AM.ATAN
+         JMP      FUNC
+;
+;
          END
-                                                                                                                         
+                                                                                                      

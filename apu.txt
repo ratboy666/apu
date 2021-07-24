@@ -39,8 +39,18 @@ table.
         $SA REAL      -  INTEGER
         $MA REAL      *  INTEGER
         $DA REAL      /  INTEGER
+        $AE REAL      +  INTEGER*4
+        $SE REAL      -  INTEGER*4
+        $ME REAL      *  INTEGER*4
+        $DE REAL      /  INTEGER*4
     INTRINSIC
-        NONE
+        EXP
+        ALOG
+        ALOG10
+        SIN
+        COS
+        SQRT
+        ATAN
 
 
 TODO
@@ -59,14 +69,15 @@ FLTS instruction, but need to load the integer to the chip,
 and then convert AM9511 to Microsoft REAL. This will not be
 much faster -- and may even be slower.
 
-However, mixed operations (REAL, INTEGER and REAL INTEGER*4)
-can benefit as the AM9511 can be loaded, FLTS or FLTD, and
-then the operation performed.
-
-We want to add in overflow detection to multiply.
+We may want to add in overflow detection to multiply.
 
 The integer functions need to be as fast as possible to provide
 any benefit at all.
+
+TANH(X) = EXP(-X) / (EXP(X) + EXP(-X)) * 2 + 1
+(not included in AM9511, use above formula)
+
+We may want to add more PWR functions...
 
 
 Compiling and Linking with APU
