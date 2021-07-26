@@ -4,8 +4,16 @@ NOTE:
 
 July 24, 2021: Create bm (benchmark) directory with benchmark source, paper (including results)
 from 1982. This can be used to qualify the performance of APU.REL on 2, 2.5, 3 and 4 MHz Z80 with
-and without AM9511A m chip. All code typed in from the paper and compiled with F80, MBASIC
-and TURBO PASCAL. Run in emulation with Zxcc, but not run on real Z80 or AM9511A.
+and without AM9511A chip. All code typed in from the paper and compiled with F80, MBASIC
+and TURBO PASCAL. Run in emulation with Zxcc, but not run on real Z80 or AM9511A. Update:
+Phillip Stevens has run this on a real AM9511A, with RC2014. If that combination had been
+available in 1982:
+
+"So with 0.91 sec for BM8 , in 1982 terms we're the second fastest thing on the planet (or at least
+in the document). behind the Cyber 171 with 0.36 sec and in front of the Wang 2200VP with 1.0 sec."
+
+-- Phillip Stevens
+
 
 
 Link apu.rel before forlib.rel to accelerate INTEGER and INTEGER * 4 (multiply and divide),
